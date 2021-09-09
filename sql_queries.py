@@ -8,59 +8,64 @@ time_table_drop = "DROP TABLE IF EXISTS time;"
 
 # CREATE TABLES
 
+# Since we'll be dealing with a subset of data we allow song and artist id to be null
 songplay_table_create = ("""
     CREATE TABLE IF NOT EXISTS songplays (
         songplay_id      SERIAL PRIMARY KEY, 
-        start_time       DATE,
-        user_id          INT, 
-        level            VARCHAR, 
+        start_time       TIMESTAMP NOT NULL,
+        user_id          INT NOT NULL, 
+        level            VARCHAR NOT NULL, 
         song_id          VARCHAR, 
         artist_id        VARCHAR, 
-        session_id       INT, 
-        location         VARCHAR, 
-        user_agent       VARCHAR
+        session_id       INT NOT NULL, 
+        location         VARCHAR NOT NULL, 
+        user_agent       VARCHAR NOT NULL
     );
 """)
 
+# We assume the only optional field is gender (as it should be!)
 user_table_create = ("""
     CREATE TABLE IF NOT EXISTS users (
         user_id          INT PRIMARY KEY,
-        first_name       VARCHAR,
-        last_name        VARCHAR,
+        first_name       VARCHAR NOT NULL,
+        last_name        VARCHAR NOT NULL,
         gender           CHAR(1),
-        level            VARCHAR
+        level            VARCHAR NOT NULL
     );
 """)
 
+# We assume the only optional field is year
 song_table_create = ("""
     CREATE TABLE IF NOT EXISTS songs (
         song_id          VARCHAR PRIMARY KEY,
-        title            VARCHAR,
-        artist_id        VARCHAR,
+        title            VARCHAR NOT NULL,
+        artist_id        VARCHAR NOT NULL,
         year             INT,
-        duration         FLOAT
+        duration         FLOAT NOT NULL
     );
 """)
 
+# We assume that only required fields are id and name
 artist_table_create = ("""
     CREATE TABLE IF NOT EXISTS artists (
         artist_id        VARCHAR PRIMARY KEY,
-        name             VARCHAR,
+        name             VARCHAR NOT NULL,
         location         VARCHAR,
         latitude         FLOAT,
         longitude        FLOAT
     );
 """)
 
+# Not null constraints redundant since fields are extracted from datetime object
 time_table_create = ("""
     CREATE TABLE IF NOT EXISTS time (
         start_time       TIMESTAMP PRIMARY KEY,
-        hour             VARCHAR,
-        day              VARCHAR,
-        week             FLOAT,
-        month            FLOAT,
-        year             INT,
-        weekday          VARCHAR
+        hour             VARCHAR NOT NULL,
+        day              VARCHAR NOT NULL,
+        week             FLOAT NOT NULL,
+        month            FLOAT NOT NULL,
+        year             INT NOT NULL,
+        weekday          VARCHAR NOT NULL
     );
 """)
 
@@ -79,11 +84,12 @@ songplay_table_insert = ("""
     ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) 
 """)
 
+# Allow users to change their level (free/paid)
 user_table_insert = ("""
     INSERT INTO users (user_id, first_name, last_name, gender, level) 
         VALUES (%s, %s, %s, %s, %s)
-    ON CONFLICT 
-        DO NOTHING ;
+    ON CONFLICT (user_id)
+        DO UPDATE SET level=EXCLUDED.level;
 """)
 
 song_table_insert = ("""
@@ -93,11 +99,15 @@ song_table_insert = ("""
         DO NOTHING;
 """)
 
+# Allow artists to change their location, latitude, and longitude
 artist_table_insert = ("""
     INSERT INTO artists (artist_id, name, location, latitude, longitude) 
         VALUES (%s, %s, %s, %s, %s)
-    ON CONFLICT
-        DO NOTHING ;
+    ON CONFLICT (artist_id)
+        DO UPDATE SET 
+            location=EXCLUDED.location,
+            latitude=EXCLUDED.latitude,
+            longitude=EXCLUDED.longitude;
 """)
 
 time_table_insert = ("""
@@ -115,7 +125,7 @@ song_select = ("""
     JOIN artists a  
         ON s.artist_id = a.artist_id
     WHERE s.title=(%s)
-        AND a.artist_id=(%s)
+        AND a.name=(%s)
         AND s.duration=(%s)
 """)
 
